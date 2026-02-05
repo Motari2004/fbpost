@@ -1,209 +1,163 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facebook Poster</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f0f2f5;
-            margin: 0;
-            padding: 20px;
-            color: #1c1e21;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-        }
-        h1 {
-            text-align: center;
-            color: #1877f2;
-        }
-        .status {
-            text-align: center;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-        .connected { color: green; }
-        .not-connected { color: orange; }
-        label {
-            display: block;
-            margin: 15px 0 5px;
-            font-weight: bold;
-        }
-        input[type="text"], input[type="password"], textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            box-sizing: border-box;
-        }
-        textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-        .file-upload {
-            margin: 20px 0;
-            padding: 20px;
-            border: 2px dashed #ccc;
-            border-radius: 8px;
-            text-align: center;
-            cursor: pointer;
-        }
-        .file-upload.dragover {
-            background: #e7f3ff;
-            border-color: #1877f2;
-        }
-        #preview {
-            max-width: 100%;
-            max-height: 300px;
-            margin-top: 15px;
-            border-radius: 8px;
-        }
-        button {
-            background: #1877f2;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            font-size: 16px;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 20px;
-        }
-        button:hover {
-            background: #166fe5;
-        }
-        button:disabled {
-            background: #a8c7f5;
-            cursor: not-allowed;
-        }
-        #status {
-            margin-top: 20px;
-            text-align: center;
-            font-weight: bold;
-        }
-        .success { color: green; }
-        .error { color: red; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facebook Poster</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f0f2f5;
+        margin: 0;
+        padding: 20px;
+        color: #1c1e21;
+    }
+    .container {
+        max-width: 700px;
+        margin: 0 auto;
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    }
+    h1 { text-align: center; color: #1877f2; }
+    .status { text-align: center; font-weight: bold; margin-bottom: 20px; }
+    .connected { color: green; }
+    .not-connected { color: orange; }
+    label { display: block; margin: 15px 0 5px; font-weight: bold; }
+    input[type="text"], input[type="password"], textarea {
+        width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box;
+    }
+    textarea { min-height: 100px; resize: vertical; }
+    .file-upload {
+        margin: 20px 0; padding: 20px; border: 2px dashed #ccc; border-radius: 8px;
+        text-align: center; cursor: pointer;
+    }
+    .file-upload.dragover { background: #e7f3ff; border-color: #1877f2; }
+    #preview { max-width: 100%; max-height: 300px; margin-top: 15px; border-radius: 8px; }
+    button {
+        background: #1877f2; color: white; border: none; padding: 12px 24px;
+        border-radius: 6px; font-size: 16px; cursor: pointer; width: 100%; margin-top: 20px;
+    }
+    button:hover { background: #166fe5; }
+    button:disabled { background: #a8c7f5; cursor: not-allowed; }
+    #status { margin-top: 20px; text-align: center; font-weight: bold; }
+    .success { color: green; }
+    .error { color: red; }
+
+    /* Screenshot gallery */
+    #screenshotGallery {
+        margin-top: 25px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+    }
+    #screenshotGallery img {
+        max-width: 150px;
+        max-height: 120px;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        transition: transform 0.2s;
+    }
+    #screenshotGallery img:hover { transform: scale(1.05); }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>Facebook Poster</h1>
+<div class="container">
+    <h1>Facebook Poster</h1>
 
-        <div class="status" id="connectionStatus">Checking connection...</div>
+    <div class="status" id="connectionStatus">Checking connection...</div>
 
-        <form id="postForm">
-            <label for="email">Facebook Email / Phone (only first time)</label>
-            <input type="text" id="email" name="email" placeholder="Enter email or phone">
+    <form id="postForm">
+        <label for="email">Facebook Email / Phone (only first time)</label>
+        <input type="text" id="email" name="email" placeholder="Enter email or phone">
 
-            <label for="password">Password (only first time)</label>
-            <input type="password" id="password" name="password" placeholder="Enter password">
+        <label for="password">Password (only first time)</label>
+        <input type="password" id="password" name="password" placeholder="Enter password">
 
-            <label for="message">Caption / Message</label>
-            <textarea id="message" name="message" placeholder="What's on your mind?" required></textarea>
+        <label for="message">Caption / Message</label>
+        <textarea id="message" name="message" placeholder="What's on your mind?" required></textarea>
 
-            <label>Upload Image</label>
-            <div class="file-upload" id="dropZone">
-                Drag & drop image here or click to select
-                <input type="file" id="image" name="image" accept="image/*" hidden>
-            </div>
-            <img id="preview" src="" alt="Preview" style="display:none;">
+        <label>Upload Image</label>
+        <div class="file-upload" id="dropZone">
+            Drag & drop image here or click to select
+            <input type="file" id="image" name="image" accept="image/*" hidden>
+        </div>
+        <img id="preview" src="" alt="Preview" style="display:none;">
 
-            <button type="submit" id="postBtn">Post to Facebook</button>
-        </form>
+        <button type="submit" id="postBtn">Post to Facebook</button>
+    </form>
 
-        <div id="status"></div>
-    </div>
+    <div id="status"></div>
 
-    <script>
-        const form = document.getElementById('postForm');
-        const statusDiv = document.getElementById('status');
-        const connectionStatus = document.getElementById('connectionStatus');
-        const dropZone = document.getElementById('dropZone');
-        const imageInput = document.getElementById('image');
-        const preview = document.getElementById('preview');
+    <!-- Screenshot gallery -->
+    <div id="screenshotGallery"></div>
+</div>
 
-        // Check if already connected (by trying to see if session exists)
-        fetch('/check_connection')
-            .then(res => res.json())
-            .then(data => {
-                if (data.connected) {
-                    connectionStatus.textContent = "Connected ✓";
-                    connectionStatus.classList.add('connected');
-                    document.getElementById('email').disabled = true;
-                    document.getElementById('password').disabled = true;
-                } else {
-                    connectionStatus.textContent = "Not connected yet";
-                    connectionStatus.classList.add('not-connected');
-                }
+<script>
+const form = document.getElementById('postForm');
+const statusDiv = document.getElementById('status');
+const connectionStatus = document.getElementById('connectionStatus');
+const dropZone = document.getElementById('dropZone');
+const imageInput = document.getElementById('image');
+const preview = document.getElementById('preview');
+const gallery = document.getElementById('screenshotGallery');
+
+// Drag & drop
+dropZone.addEventListener('click', () => imageInput.click());
+imageInput.addEventListener('change', showPreview);
+['dragover', 'dragenter'].forEach(e => dropZone.addEventListener(e, ev => {
+    ev.preventDefault(); dropZone.classList.add('dragover');
+}));
+['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, ev => {
+    ev.preventDefault(); dropZone.classList.remove('dragover');
+    if (e === 'drop') { imageInput.files = ev.dataTransfer.files; showPreview(); }
+}));
+
+function showPreview() {
+    const file = imageInput.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = e => { preview.src = e.target.result; preview.style.display = 'block'; };
+        reader.readAsDataURL(file);
+    }
+}
+
+form.addEventListener('submit', async e => {
+    e.preventDefault();
+    statusDiv.textContent = "Posting...";
+    statusDiv.className = "";
+
+    gallery.innerHTML = ''; // Clear gallery
+
+    const formData = new FormData(form);
+
+    try {
+        const response = await fetch('/post', { method: 'POST', body: formData });
+        const result = await response.json();
+
+        statusDiv.textContent = result.message;
+        statusDiv.className = result.success ? 'success' : 'error';
+
+        // Display screenshots
+        if (result.screenshots && result.screenshots.length) {
+            result.screenshots.forEach(filename => {
+                const img = document.createElement('img');
+                img.src = `/screenshots/${filename}?t=${Date.now()}`;
+                gallery.appendChild(img);
             });
-
-        // Drag & drop
-        dropZone.addEventListener('click', () => imageInput.click());
-        imageInput.addEventListener('change', showPreview);
-
-        ['dragover', 'dragenter'].forEach(event => {
-            dropZone.addEventListener(event, e => {
-                e.preventDefault();
-                dropZone.classList.add('dragover');
-            });
-        });
-
-        ['dragleave', 'drop'].forEach(event => {
-            dropZone.addEventListener(event, e => {
-                e.preventDefault();
-                dropZone.classList.remove('dragover');
-                if (event === 'drop') {
-                    imageInput.files = e.dataTransfer.files;
-                    showPreview();
-                }
-            });
-        });
-
-        function showPreview() {
-            const file = imageInput.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                };
-                reader.readAsDataURL(file);
-            }
         }
 
-        form.addEventListener('submit', async e => {
-            e.preventDefault();
-            statusDiv.textContent = "Posting...";
-            statusDiv.className = "";
-
-            const formData = new FormData(form);
-
-            try {
-                const response = await fetch('/post', {
-                    method: 'POST',
-                    body: formData
-                });
-                const result = await response.json();
-
-                statusDiv.textContent = result.message;
-                statusDiv.className = result.success ? 'success' : 'error';
-
-                if (result.success) {
-                    form.reset();
-                    preview.style.display = 'none';
-                }
-            } catch (err) {
-                statusDiv.textContent = "Network error: " + err.message;
-                statusDiv.className = 'error';
-            }
-        });
-    </script>
+        if (result.success) {
+            form.reset();
+            preview.style.display = 'none';
+        }
+    } catch (err) {
+        statusDiv.textContent = "Network error: " + err.message;
+        statusDiv.className = 'error';
+    }
+});
+</script>
 </body>
 </html>
