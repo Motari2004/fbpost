@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, jsonify, send_from_directory
 from playwright.sync_api import sync_playwright
-import time, os, uuid, random
+import time, os, uuid, random, json
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -11,14 +11,21 @@ app = Flask(__name__)
 HEADLESS = True  # True = hidden browser | False = visible browser
 
 # ==========================================
-# CONFIGURATION
+# CONFIGURATION (using /tmp/ for cloud mounts)
 # ==========================================
-SESSION_FILE = os.getenv("FB_SESSION_FILE", "fbsession.json")
-UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
-SCREENSHOT_FOLDER = os.path.join(os.getcwd(), "screenshots")
+TMP_DIR = "/tmp/facebook_bot"
+UPLOAD_FOLDER = os.path.join(TMP_DIR, "uploads")
+SCREENSHOT_FOLDER = os.path.join(TMP_DIR, "screenshots")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(SCREENSHOT_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+# Load session JSON from environment variable
+FB_SESSION_JSON = os.getenv("FB_SESSION_JSON")
+try:
+    SESSION_STATE = json.loads(FB_SESSION_JSON) if FB_SESSION_JSON else None
+except json.JSONDecodeError:
+    SESSION_STATE = None
 
 # ==========================================
 # HELPERS
@@ -64,8 +71,9 @@ def perform_post(email, password, message, image_path=None):
             headless=HEADLESS,
             args=["--disable-blink-features=AutomationControlled", "--start-maximized"]
         )
+
         context = browser.new_context(
-            storage_state=SESSION_FILE if os.path.exists(SESSION_FILE) else None,
+            storage_state=SESSION_STATE,  # use env session
             viewport={"width": 1280, "height": 800},
             user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -73,6 +81,7 @@ def perform_post(email, password, message, image_path=None):
                 "Chrome/131.0.0.0 Safari/537.36"
             ),
         )
+
         page = context.new_page()
         page.set_default_timeout(60000)
 
@@ -100,7 +109,8 @@ def perform_post(email, password, message, image_path=None):
                 time.sleep(3)
 
             print("✅ Logged in")
-            context.storage_state(path=SESSION_FILE)
+            # Update SESSION_STATE in memory (to print later)
+            SESSION_STATE = context.storage_state()
             save_screenshot(page, "logged_in")
 
             # -------------------------
@@ -178,7 +188,6 @@ def perform_post(email, password, message, image_path=None):
                 composer_dialog = page.locator(
                     'div[role="dialog"]:has-text("Create post"):visible, div[role="dialog"]:visible'
                 ).first
-
                 if not composer_dialog.is_visible(timeout=8000):
                     composer_dialog = page
 
@@ -191,7 +200,6 @@ def perform_post(email, password, message, image_path=None):
                 except Exception as e:
                     print(f"Could not attach image: {e}")
                     save_screenshot(page, "upload_error")
-
                 time.sleep(random.uniform(6.0, 12.0))
                 random_mouse_move(page)
 
@@ -230,7 +238,10 @@ def perform_post(email, password, message, image_path=None):
                 save_screenshot(page, "no_post_button")
                 return {"success": False, "message": "Could not find Post button", "screenshots": captured_screenshots}
 
-            context.storage_state(path=SESSION_FILE)
+            # Update SESSION_STATE for next run (print JSON to copy into env)
+            new_session_json = context.storage_state()
+            print("New session JSON:", json.dumps(new_session_json))
+
             return {"success": True, "message": "Successfully posted!", "screenshots": captured_screenshots}
 
         except Exception as e:
@@ -257,7 +268,7 @@ def handle_post():
     img_path = None
     if img:
         img_path = os.path.join(
-            app.config["UPLOAD_FOLDER"],
+            UPLOAD_FOLDER,
             secure_filename(f"{uuid.uuid4()}_{img.filename}")
         )
         img.save(img_path)
