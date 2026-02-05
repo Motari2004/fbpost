@@ -1,20 +1,59 @@
-# Stage 1: Builder
-FROM python:3.11-slim AS builder
+# Use official Python slim image (Debian-based)
+FROM python:3.11-slim
+
+# Set working directory
 WORKDIR /app
-COPY requirements.txt .
+
+# Install only the minimal system dependencies Playwright actually needs
+# (no --with-deps needed — we install them manually to avoid obsolete packages)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && pip install --no-cache-dir -r requirements.txt \
-    && playwright install --with-deps chromium \
-    && apt-get purge -y build-essential \
-    && apt-get autoremove -y \
+    ca-certificates \
+    fonts-liberation \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcairo2 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libexpat1 \
+    libgbm1 \
+    libgcc1 \
+    libglib2.0-0 \
+    libnspr4 \
+    libnss3 \
+    libpango-1.0-0 \
+    libstdc++6 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxi6 \
+    libxrandr2 \
+    libxrender1 \
+    libxtst6 \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Stage 2: Final image
-FROM python:3.11-slim
-WORKDIR /app
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
+# Copy requirements first (better caching)
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install Playwright browsers (chromium only)
+# No --with-deps — we already installed the deps above
+RUN playwright install chromium
+
+# Copy the rest of the application
 COPY . .
+
+# Expose port
 EXPOSE 5000
+
+# Run the Flask app
 CMD ["python", "app.py"]
