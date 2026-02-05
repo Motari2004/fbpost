@@ -2,6 +2,7 @@ from flask import Flask, request, render_template, jsonify, send_from_directory
 from playwright.sync_api import sync_playwright
 import time, os, uuid, random, json
 from werkzeug.utils import secure_filename
+import tempfile
 
 app = Flask(__name__)
 
@@ -11,21 +12,15 @@ app = Flask(__name__)
 HEADLESS = True  # True = hidden browser | False = visible browser
 
 # ==========================================
-# CONFIGURATION (using /tmp/ for cloud mounts)
+# CONFIGURATION
 # ==========================================
-TMP_DIR = "/tmp/facebook_bot"
-UPLOAD_FOLDER = os.path.join(TMP_DIR, "uploads")
-SCREENSHOT_FOLDER = os.path.join(TMP_DIR, "screenshots")
+SESSION_JSON_ENV = os.getenv("FB_SESSION_JSON")  # JSON string of session if exists
+SESSION_STATE = None
+UPLOAD_FOLDER = os.path.join(tempfile.gettempdir(), "uploads")
+SCREENSHOT_FOLDER = os.path.join(tempfile.gettempdir(), "screenshots")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(SCREENSHOT_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-
-# Load session JSON from environment variable
-FB_SESSION_JSON = os.getenv("FB_SESSION_JSON")
-try:
-    SESSION_STATE = json.loads(FB_SESSION_JSON) if FB_SESSION_JSON else None
-except json.JSONDecodeError:
-    SESSION_STATE = None
 
 # ==========================================
 # HELPERS
@@ -64,16 +59,24 @@ def save_screenshot(page, name):
 # ==========================================
 def perform_post(email, password, message, image_path=None):
     global captured_screenshots
+    global SESSION_STATE
+
     captured_screenshots = []
+
+    # Load session from ENV if available
+    storage_state = None
+    if SESSION_STATE:
+        storage_state = SESSION_STATE
+    elif SESSION_JSON_ENV:
+        storage_state = json.loads(SESSION_JSON_ENV)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=HEADLESS,
             args=["--disable-blink-features=AutomationControlled", "--start-maximized"]
         )
-
         context = browser.new_context(
-            storage_state=SESSION_STATE,  # use env session
+            storage_state=storage_state,
             viewport={"width": 1280, "height": 800},
             user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -81,7 +84,6 @@ def perform_post(email, password, message, image_path=None):
                 "Chrome/131.0.0.0 Safari/537.36"
             ),
         )
-
         page = context.new_page()
         page.set_default_timeout(60000)
 
@@ -109,8 +111,7 @@ def perform_post(email, password, message, image_path=None):
                 time.sleep(3)
 
             print("✅ Logged in")
-            # Update SESSION_STATE in memory (to print later)
-            SESSION_STATE = context.storage_state()
+            SESSION_STATE = context.storage_state()  # update global session
             save_screenshot(page, "logged_in")
 
             # -------------------------
@@ -188,6 +189,7 @@ def perform_post(email, password, message, image_path=None):
                 composer_dialog = page.locator(
                     'div[role="dialog"]:has-text("Create post"):visible, div[role="dialog"]:visible'
                 ).first
+
                 if not composer_dialog.is_visible(timeout=8000):
                     composer_dialog = page
 
@@ -200,6 +202,7 @@ def perform_post(email, password, message, image_path=None):
                 except Exception as e:
                     print(f"Could not attach image: {e}")
                     save_screenshot(page, "upload_error")
+
                 time.sleep(random.uniform(6.0, 12.0))
                 random_mouse_move(page)
 
@@ -238,10 +241,7 @@ def perform_post(email, password, message, image_path=None):
                 save_screenshot(page, "no_post_button")
                 return {"success": False, "message": "Could not find Post button", "screenshots": captured_screenshots}
 
-            # Update SESSION_STATE for next run (print JSON to copy into env)
-            new_session_json = context.storage_state()
-            print("New session JSON:", json.dumps(new_session_json))
-
+            SESSION_STATE = context.storage_state()  # save session globally
             return {"success": True, "message": "Successfully posted!", "screenshots": captured_screenshots}
 
         except Exception as e:
@@ -268,7 +268,7 @@ def handle_post():
     img_path = None
     if img:
         img_path = os.path.join(
-            UPLOAD_FOLDER,
+            app.config["UPLOAD_FOLDER"],
             secure_filename(f"{uuid.uuid4()}_{img.filename}")
         )
         img.save(img_path)
@@ -285,4 +285,4 @@ def serve_screenshot(filename):
     return send_from_directory(SCREENSHOT_FOLDER, filename)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=False)
