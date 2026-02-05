@@ -1,11 +1,19 @@
-# Use slim base for smaller size
+# ========================================
+# Dockerfile for Flask + Playwright FB Poster
+# ========================================
+
 FROM python:3.11-slim
+
+# Prevent Python from writing .pyc files and buffering output
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # Set working directory
 WORKDIR /app
 
-# Update package list and install all required system libraries
-# (this covers everything Playwright needs on Debian trixie)
+# Install system dependencies required by Chromium + Playwright
+# (manual list to avoid deprecated/obsolete packages like ttf-unifont)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     wget \
@@ -42,22 +50,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxshmfence1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first (cache optimization)
+# Copy requirements first → better caching
 COPY requirements.txt .
 
-# Install Python packages
-RUN pip install --no-cache-dir -r requirements.txt
+# Upgrade pip and install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Now install Playwright dependencies + Chromium browser
-# (install-deps ensures all libs are present, then install chromium)
+# Install Playwright browsers (chromium only)
+# First install deps, then browser → avoids most common errors
 RUN playwright install-deps && \
-    playwright install chromium
+    playwright install chromium --with-deps
 
-# Copy application code
+# Copy the rest of the application
 COPY . .
 
-# Expose Flask port
+# Create directories (in case they don't exist)
+RUN mkdir -p fb_session uploads
+
+# Expose Flask port (Render uses $PORT anyway)
 EXPOSE 5000
 
-# Run the app
+# Run the app (Render will override port via $PORT)
 CMD ["python", "app.py"]
